@@ -3,75 +3,107 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BLINDSPOT — HCI Sandbox</title>
+  <title>BLINDSPOT — Local HCI Sandbox</title>
   <style>
-    :root { color-scheme: dark; --ink: #e8edf8; --muted: #93a0b8; --panel: rgba(12, 17, 29, .82); --edge: rgba(153, 179, 229, .23); --cyan: #49e5ff; --pink: #ff5ca8; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; overflow: hidden; background: #080b12; color: var(--ink); font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #workspace { display: block; width: 100vw; height: 100vh; cursor: crosshair; will-change: transform; transition: transform 110ms ease-out; }
-    #overlay { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
-    .panel { position: absolute; top: 20px; left: 20px; width: min(342px, calc(100vw - 40px)); padding: 17px; border: 1px solid var(--edge); border-radius: 10px; background: var(--panel); box-shadow: 0 16px 44px rgba(0,0,0,.27); backdrop-filter: blur(14px); pointer-events: auto; }
-    h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: .16em; } .eyebrow { margin: 0 0 15px; color: var(--muted); font-size: 10px; letter-spacing: .1em; }
-    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; } button { padding: 9px 7px; border: 1px solid var(--edge); border-radius: 6px; background: rgba(255,255,255,.04); color: var(--muted); font: inherit; cursor: pointer; } button:hover, button[aria-pressed="true"] { border-color: var(--cyan); background: rgba(73,229,255,.12); color: var(--ink); } button:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
-    .readouts { display: grid; gap: 7px; padding-top: 12px; border-top: 1px solid var(--edge); } .readout { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .key { color: var(--muted); } .value { color: var(--cyan); font-variant-numeric: tabular-nums; } .value.filtered { color: var(--pink); }
-    .note { margin: 14px 0 0; color: var(--muted); font-size: 11px; } kbd { padding: 1px 4px; border: 1px solid var(--edge); border-radius: 3px; color: var(--ink); }
-    .crosshair { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 1.5px solid currentColor; border-radius: 50%; opacity: .95; filter: drop-shadow(0 0 5px currentColor); } .crosshair::before, .crosshair::after { content: ""; position: absolute; background: currentColor; } .crosshair::before { top: 10px; left: -6px; width: 34px; height: 1px; } .crosshair::after { top: -6px; left: 10px; width: 1px; height: 34px; } #rawMarker { color: var(--cyan); } #filteredMarker { color: var(--pink); }
+    :root { color-scheme: dark; --bg:#080b12; --panel:rgba(12,17,29,.87); --edge:rgba(153,179,229,.24); --ink:#e8edf8; --muted:#93a0b8; --cyan:#49e5ff; --pink:#ff5ca8; --green:#93f2aa; }
+    * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:var(--bg); color:var(--ink); font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    #workspace { display:block; width:100vw; height:100vh; cursor:crosshair; transition:transform 110ms ease-out; will-change:transform; }
+    #overlay { position:fixed; inset:0; z-index:2; pointer-events:none; } .panel { position:absolute; top:20px; left:20px; width:min(380px,calc(100vw - 40px)); max-height:calc(100vh - 40px); overflow:auto; padding:16px; border:1px solid var(--edge); border-radius:10px; background:var(--panel); box-shadow:0 16px 44px rgba(0,0,0,.3); backdrop-filter:blur(14px); pointer-events:auto; }
+    h1 { margin:0 0 3px; font-size:18px; letter-spacing:.16em; } .eyebrow,.hint { margin:0 0 14px; color:var(--muted); font-size:10px; letter-spacing:.07em; } .hint { margin:9px 0 0; letter-spacing:0; }
+    .modes,.actions { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; } button { min-height:34px; padding:7px; border:1px solid var(--edge); border-radius:6px; background:rgba(255,255,255,.04); color:var(--muted); font:inherit; cursor:pointer; } button:hover,button[aria-pressed="true"] { border-color:var(--cyan); background:rgba(73,229,255,.12); color:var(--ink); } button:disabled { cursor:not-allowed; opacity:.48; } button:focus-visible { outline:2px solid var(--pink); outline-offset:2px; }
+    .status { margin:0 0 12px; padding:7px 8px; border-left:2px solid var(--muted); background:rgba(255,255,255,.035); color:var(--muted); } .status[data-state="ready"] { border-color:var(--green); color:var(--green); } .status[data-state="loading"] { border-color:var(--cyan); color:var(--cyan); } .status[data-state="error"] { border-color:var(--pink); color:var(--pink); }
+    .readouts { display:grid; gap:6px; margin:12px 0; padding:11px 0; border-block:1px solid var(--edge); } .readout { display:flex; justify-content:space-between; gap:10px; } .key { color:var(--muted); } output { color:var(--cyan); font-variant-numeric:tabular-nums; } output.filtered { color:var(--pink); }
+    label { display:block; margin:0 0 6px; color:var(--muted); font-size:10px; letter-spacing:.07em; } textarea { display:block; width:100%; height:86px; padding:9px; resize:vertical; border:1px solid var(--edge); border-radius:6px; background:#080b12; color:var(--ink); font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; } textarea:focus { outline:1px solid var(--cyan); border-color:var(--cyan); }
+    .crosshair { position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border:1.5px solid currentColor; border-radius:50%; filter:drop-shadow(0 0 5px currentColor); } .crosshair::before,.crosshair::after { content:""; position:absolute; background:currentColor; } .crosshair::before { top:10px; left:-6px; width:34px; height:1px; } .crosshair::after { top:-6px; left:10px; width:1px; height:34px; } #rawMarker { color:var(--cyan); } #filteredMarker { color:var(--pink); }
   </style>
 </head>
 <body>
   <canvas id="workspace" aria-label="BLINDSPOT grid workspace"></canvas>
-  <div id="overlay" aria-live="polite">
-    <section class="panel" aria-label="Simulation controls">
-      <h1>BLINDSPOT</h1><p class="eyebrow">LOCAL HCI DEFLECTION SIMULATOR</p>
-      <div class="modes" role="group" aria-label="Telemetry source"><button id="mockMode" type="button" aria-pressed="true">Mock telemetry</button><button id="clickMode" type="button" aria-pressed="false">Click telemetry</button></div>
-      <div class="readouts"><div class="readout"><span class="key">RAW COORDINATES</span><output class="value" id="rawReadout">0, 0</output></div><div class="readout"><span class="key">FILTERED COORDINATES</span><output class="value filtered" id="filteredReadout">0, 0</output></div><div class="readout"><span class="key">CANVAS OFFSET</span><output class="value" id="offsetReadout">0, 0</output></div></div>
-      <p class="note">Cyan = incoming telemetry · pink = filtered focus. In click mode, select a focus zone; move the pointer nearby to exercise the bounded deflection model.</p>
+  <div id="overlay">
+    <section class="panel" aria-label="BLINDSPOT simulation controls">
+      <h1>BLINDSPOT</h1><p class="eyebrow">LOCAL HCI TELEMETRY SIMULATOR</p>
+      <div class="modes" role="group" aria-label="Telemetry source"><button id="mockMode" type="button" aria-pressed="true">Mock telemetry</button><button id="clickMode" type="button" aria-pressed="false">Click telemetry</button><button id="gazeMode" type="button" aria-pressed="false" disabled>Gaze telemetry</button><button id="enableCamera" type="button">Enable camera</button></div>
+      <p id="sensorStatus" class="status" data-state="idle" role="status">Sensor idle — camera is off.</p>
+      <div class="readouts"><div class="readout"><span class="key">RAW COORDINATES</span><output id="rawReadout">0, 0</output></div><div class="readout"><span class="key">FILTERED COORDINATES</span><output id="filteredReadout" class="filtered">0, 0</output></div><div class="readout"><span class="key">CANVAS OFFSET</span><output id="offsetReadout">0, 0</output></div></div>
+      <label for="scriptEditor">AUTOMATION SCRIPT</label><textarea id="scriptEditor" spellcheck="false" aria-label="Automation script">const timer = setInterval(() => {
+  placePixel(Math.random() * innerWidth, Math.random() * innerHeight, '#49e5ff');
+}, 80);</textarea>
+      <div class="actions"><button id="runScript" type="button">Run script</button><button id="terminateScript" type="button" disabled>Terminate script</button></div>
+      <p class="hint">Cyan = raw telemetry · pink = filtered focus. Gaze telemetry is opt-in, processed in this tab, and can be stopped by terminating the page. Worker automation is rate-limited to one placement per 100 ms.</p>
     </section>
     <div id="rawMarker" class="crosshair" aria-hidden="true"></div><div id="filteredMarker" class="crosshair" aria-hidden="true"></div>
   </div>
   <script>
   (() => {
     'use strict';
-    /** Constant-velocity, 2D Kalman filter for local HCI telemetry simulation. */
     class OcularFilter {
-      constructor() { this.state = [innerWidth / 2, innerHeight / 2, 0, 0]; this.covariance = [1, 1, 12, 12]; this.initialized = false; }
+      constructor() { this.state = [innerWidth / 2, innerHeight / 2, 0, 0]; this.variance = [1, 1, 12, 12]; this.initialized = false; }
       update(rawX, rawY, deltaTime) {
-        const dt = Math.max(0.001, Math.min(deltaTime, 0.1));
+        const dt = Math.max(.001, Math.min(deltaTime || .016, .1));
         if (!this.initialized) { this.state[0] = rawX; this.state[1] = rawY; this.initialized = true; return { x: rawX, y: rawY }; }
         this.state[0] += this.state[2] * dt; this.state[1] += this.state[3] * dt;
-        this.covariance[0] += this.covariance[2] * dt * dt + .06; this.covariance[1] += this.covariance[3] * dt * dt + .06;
-        const gainX = this.covariance[0] / (this.covariance[0] + 18); const gainY = this.covariance[1] / (this.covariance[1] + 18);
-        const errorX = rawX - this.state[0], errorY = rawY - this.state[1];
-        this.state[0] += gainX * errorX; this.state[1] += gainY * errorY;
-        this.state[2] += gainX * errorX / dt * .09; this.state[3] += gainY * errorY / dt * .09;
-        this.covariance[0] *= 1 - gainX; this.covariance[1] *= 1 - gainY;
-        return { x: this.state[0], y: this.state[1] };
+        this.variance[0] += this.variance[2] * dt * dt + .06; this.variance[1] += this.variance[3] * dt * dt + .06;
+        const kx = this.variance[0] / (this.variance[0] + 18), ky = this.variance[1] / (this.variance[1] + 18), ex = rawX - this.state[0], ey = rawY - this.state[1];
+        this.state[0] += kx * ex; this.state[1] += ky * ey; this.state[2] += kx * ex / dt * .09; this.state[3] += ky * ey / dt * .09;
+        this.variance[0] *= 1 - kx; this.variance[1] *= 1 - ky; return { x: this.state[0], y: this.state[1] };
       }
     }
-    /** Bounded, reversible canvas-only deflection used solely in this game simulation. */
     class DeflectionEngine {
       constructor(canvas) { this.canvas = canvas; this.offset = { x: 0, y: 0 }; this.pointer = { x: -9999, y: -9999 }; }
       setPointer(x, y) { this.pointer = { x, y }; }
-      update(focus) {
-        const dx = focus.x - this.pointer.x, dy = focus.y - this.pointer.y, distance = Math.hypot(dx, dy);
-        let targetX = 0, targetY = 0;
-        if (distance < 100 && distance > .01) { const force = (1 - distance / 100) * 46; targetX = dx / distance * force; targetY = dy / distance * force; }
-        this.offset.x += (targetX - this.offset.x) * .15; this.offset.y += (targetY - this.offset.y) * .15;
-        this.canvas.style.transform = `translate(${this.offset.x.toFixed(2)}px, ${this.offset.y.toFixed(2)}px)`;
-        return this.offset;
-      }
+      update(focus) { const dx = focus.x - this.pointer.x, dy = focus.y - this.pointer.y, distance = Math.hypot(dx, dy); let tx = 0, ty = 0; if (distance > .01 && distance < 100) { const force = (1 - distance / 100) * 46; tx = dx / distance * force; ty = dy / distance * force; } this.offset.x += (tx - this.offset.x) * .15; this.offset.y += (ty - this.offset.y) * .15; this.canvas.style.transform = `translate(${this.offset.x.toFixed(2)}px, ${this.offset.y.toFixed(2)}px)`; return this.offset; }
     }
-    const $ = (id) => document.getElementById(id), canvas = $('workspace'), context = canvas.getContext('2d');
-    const filter = new OcularFilter(), engine = new DeflectionEngine(canvas);
-    const ui = { raw: $('rawReadout'), filtered: $('filteredReadout'), offset: $('offsetReadout'), rawMarker: $('rawMarker'), filteredMarker: $('filteredMarker'), mock: $('mockMode'), click: $('clickMode') };
-    let mode = 'mock', raw = { x: innerWidth / 2, y: innerHeight / 2 }, filtered = raw, lastTime = performance.now(), clickFocus = null;
-    const resize = () => { const dpr = devicePixelRatio || 1; canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; context.setTransform(dpr, 0, 0, dpr, 0, 0); };
-    const drawGrid = () => { context.clearRect(0, 0, innerWidth, innerHeight); context.fillStyle = '#080b12'; context.fillRect(0, 0, innerWidth, innerHeight); context.strokeStyle = 'rgba(130, 160, 210, .10)'; context.lineWidth = 1; const size = 40; for (let x = 0; x <= innerWidth; x += size) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, innerHeight); context.stroke(); } for (let y = 0; y <= innerHeight; y += size) { context.beginPath(); context.moveTo(0, y); context.lineTo(innerWidth, y); context.stroke(); } };
-    const setMode = (next) => { mode = next; ui.mock.setAttribute('aria-pressed', String(next === 'mock')); ui.click.setAttribute('aria-pressed', String(next === 'click')); if (next === 'click' && !clickFocus) clickFocus = { x: innerWidth / 2, y: innerHeight / 2 }; };
-    ui.mock.addEventListener('click', () => setMode('mock')); ui.click.addEventListener('click', () => setMode('click'));
-    window.addEventListener('resize', resize); window.addEventListener('pointermove', (event) => engine.setPointer(event.clientX, event.clientY));
-    window.addEventListener('click', (event) => { if (mode === 'click' && !event.target.closest('button')) clickFocus = { x: event.clientX, y: event.clientY }; });
-    const animate = (time) => { const dt = (time - lastTime) / 1000; lastTime = time; if (mode === 'mock') { const t = time / 1000; raw = { x: innerWidth * (.5 + .29 * Math.sin(t * .57) + .08 * Math.sin(t * 2.17)), y: innerHeight * (.5 + .25 * Math.cos(t * .43) + .06 * Math.sin(t * 1.73)) }; } else raw = clickFocus || raw; filtered = filter.update(raw.x, raw.y, dt); const offset = engine.update(filtered); drawGrid(); ui.raw.value = `${raw.x.toFixed(0)}, ${raw.y.toFixed(0)}`; ui.filtered.value = `${filtered.x.toFixed(0)}, ${filtered.y.toFixed(0)}`; ui.offset.value = `${offset.x.toFixed(0)}, ${offset.y.toFixed(0)}`; ui.rawMarker.style.transform = `translate(${raw.x}px, ${raw.y}px)`; ui.filteredMarker.style.transform = `translate(${filtered.x}px, ${filtered.y}px)`; requestAnimationFrame(animate); };
+    class SensorPipeline {
+      constructor(onTelemetry, setStatus) { this.onTelemetry = onTelemetry; this.setStatus = setStatus; this.video = document.createElement('video'); this.video.autoplay = true; this.video.muted = true; this.video.playsInline = true; this.video.style.display = 'none'; document.body.append(this.video); this.model = null; this.processing = false; this.active = false; }
+      async enable() {
+        if (!navigator.mediaDevices?.getUserMedia) { this.setStatus('error', 'Camera access is not available in this browser.'); return false; }
+        try { this.setStatus('loading', 'Requesting camera permission…'); const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }); this.video.srcObject = stream; await this.video.play(); await this.loadModel(); this.active = true; this.setStatus('ready', 'Camera and iris model ready — local gaze telemetry active.'); return true; } catch (error) { this.setStatus('error', `Camera unavailable: ${error.message || 'permission was not granted'}.`); return false; }
+      }
+      async loadModel() {
+        if (this.model) return;
+        this.setStatus('loading', 'Loading MediaPipe Face Mesh model…');
+        await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'; script.async = true; script.onload = resolve; script.onerror = () => reject(new Error('MediaPipe CDN could not be loaded')); document.head.append(script); });
+        if (!window.FaceMesh) throw new Error('MediaPipe Face Mesh was not initialized');
+        this.model = new window.FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+        this.model.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: .6, minTrackingConfidence: .6 });
+        this.model.onResults((results) => this.consume(results));
+      }
+      consume(results) {
+        this.processing = false; const landmarks = results.multiFaceLandmarks?.[0]; if (!landmarks) return;
+        const average = (indices) => indices.reduce((sum, index) => ({ x: sum.x + landmarks[index].x, y: sum.y + landmarks[index].y }), { x: 0, y: 0 });
+        const leftIris = average([468, 469, 470, 471, 472]), rightIris = average([473, 474, 475, 476, 477]); leftIris.x /= 5; leftIris.y /= 5; rightIris.x /= 5; rightIris.y /= 5;
+        const normalizeEye = (iris, outer, inner) => ({ x: (iris.x - outer.x) / (inner.x - outer.x || .001), y: (iris.y - (outer.y + inner.y) / 2) / (Math.abs(outer.x - inner.x) || .001) });
+        const a = normalizeEye(leftIris, landmarks[33], landmarks[133]), b = normalizeEye(rightIris, landmarks[362], landmarks[263]);
+        const x = Math.max(0, Math.min(innerWidth, ((a.x + b.x) / 2) * innerWidth)); const y = Math.max(0, Math.min(innerHeight, (.5 + (a.y + b.y) / 2) * 3) * innerHeight);
+        if (Number.isFinite(x) && Number.isFinite(y)) this.onTelemetry({ x, y });
+      }
+      processFrame() { if (!this.active || this.processing || this.video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return; this.processing = true; this.model.send({ image: this.video }).catch(() => { this.processing = false; }); }
+    }
+    class ScriptSandbox {
+      constructor(onPlacement, onState) { this.onPlacement = onPlacement; this.onState = onState; this.worker = null; this.lastPlacement = 0; }
+      run(source) {
+        this.terminate();
+        const workerSource = `self.window=undefined;self.document=undefined;self.fetch=undefined;const placePixel=(x,y,color)=>postMessage({type:'PLACE_PIXEL',x,y,color});const api=Object.freeze({placePixel,setInterval,clearInterval,setTimeout,clearTimeout,innerWidth:1920,innerHeight:1080});try{new Function('api', '\"use strict\";const {placePixel,setInterval,clearInterval,setTimeout,clearTimeout,innerWidth,innerHeight}=api;\\n' + ${JSON.stringify(source)})(api)}catch(error){postMessage({type:'SCRIPT_ERROR',message:error.message})}`;
+        const url = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' })); this.worker = new Worker(url); URL.revokeObjectURL(url);
+        this.worker.onmessage = ({ data }) => { if (data?.type === 'SCRIPT_ERROR') { this.onState('error', `Script error: ${data.message}`); return; } if (data?.type !== 'PLACE_PIXEL' || performance.now() - this.lastPlacement < 100) return; const x = Number(data.x), y = Number(data.y), color = String(data.color || ''); if (!Number.isFinite(x) || !Number.isFinite(y) || !/^#[0-9a-f]{6}$/i.test(color)) return; this.lastPlacement = performance.now(); this.onPlacement({ x, y, color }); };
+        this.worker.onerror = (event) => this.onState('error', `Script error: ${event.message}`); this.onState('ready', 'Automation script is running (100 ms placement limit).');
+      }
+      terminate() { if (this.worker) { this.worker.terminate(); this.worker = null; this.onState('idle', 'Automation script terminated.'); } }
+    }
+    const $ = (id) => document.getElementById(id), canvas = $('workspace'), ctx = canvas.getContext('2d');
+    const ui = { mock: $('mockMode'), click: $('clickMode'), gaze: $('gazeMode'), camera: $('enableCamera'), status: $('sensorStatus'), raw: $('rawReadout'), filtered: $('filteredReadout'), offset: $('offsetReadout'), rawMarker: $('rawMarker'), filteredMarker: $('filteredMarker'), editor: $('scriptEditor'), run: $('runScript'), terminate: $('terminateScript') };
+    const filter = new OcularFilter(), deflection = new DeflectionEngine(canvas), pixels = new Map(); let mode = 'mock', raw = { x: innerWidth / 2, y: innerHeight / 2 }, filtered = raw, clickFocus = null, lastTime = performance.now();
+    const setStatus = (state, message) => { ui.status.dataset.state = state; ui.status.textContent = message; };
+    const sensor = new SensorPipeline((point) => { if (mode === 'gaze') raw = point; }, setStatus);
+    const sandbox = new ScriptSandbox(({ x, y, color }) => { pixels.set(`${Math.floor(x / 20)},${Math.floor(y / 20)}`, color); if (pixels.size > 2000) pixels.delete(pixels.keys().next().value); }, setStatus);
+    const resize = () => { const dpr = devicePixelRatio || 1; canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    const draw = () => { ctx.fillStyle = '#080b12'; ctx.fillRect(0, 0, innerWidth, innerHeight); ctx.strokeStyle = 'rgba(130,160,210,.10)'; for (let x = 0; x <= innerWidth; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, innerHeight); ctx.stroke(); } for (let y = 0; y <= innerHeight; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(innerWidth, y); ctx.stroke(); } pixels.forEach((color, key) => { const [x, y] = key.split(',').map(Number); ctx.fillStyle = color; ctx.fillRect(x * 20 + 1, y * 20 + 1, 18, 18); }); };
+    const setMode = (next) => { mode = next; [ui.mock, ui.click, ui.gaze].forEach((button) => button.setAttribute('aria-pressed', String(button === ({ mock: ui.mock, click: ui.click, gaze: ui.gaze })[next]))); if (next === 'click' && !clickFocus) clickFocus = { x: innerWidth / 2, y: innerHeight / 2 }; };
+    ui.mock.addEventListener('click', () => setMode('mock')); ui.click.addEventListener('click', () => setMode('click')); ui.gaze.addEventListener('click', () => setMode('gaze'));
+    ui.camera.addEventListener('click', async () => { ui.camera.disabled = true; const enabled = await sensor.enable(); ui.gaze.disabled = !enabled; if (enabled) setMode('gaze'); ui.camera.disabled = false; });
+    ui.run.addEventListener('click', () => { sandbox.run(ui.editor.value); ui.run.disabled = true; ui.terminate.disabled = false; }); ui.terminate.addEventListener('click', () => { sandbox.terminate(); ui.run.disabled = false; ui.terminate.disabled = true; });
+    window.addEventListener('resize', resize); window.addEventListener('pointermove', (event) => deflection.setPointer(event.clientX, event.clientY)); window.addEventListener('click', (event) => { if (mode === 'click' && !event.target.closest('button, textarea')) clickFocus = { x: event.clientX, y: event.clientY }; });
+    const animate = (time) => { const dt = (time - lastTime) / 1000; lastTime = time; if (mode === 'mock') { const t = time / 1000; raw = { x: innerWidth * (.5 + .29 * Math.sin(t * .57) + .08 * Math.sin(t * 2.17)), y: innerHeight * (.5 + .25 * Math.cos(t * .43) + .06 * Math.sin(t * 1.73)) }; } else if (mode === 'click') raw = clickFocus || raw; sensor.processFrame(); filtered = filter.update(raw.x, raw.y, dt); const offset = deflection.update(filtered); draw(); ui.raw.value = `${raw.x.toFixed(0)}, ${raw.y.toFixed(0)}`; ui.filtered.value = `${filtered.x.toFixed(0)}, ${filtered.y.toFixed(0)}`; ui.offset.value = `${offset.x.toFixed(0)}, ${offset.y.toFixed(0)}`; ui.rawMarker.style.transform = `translate(${raw.x}px,${raw.y}px)`; ui.filteredMarker.style.transform = `translate(${filtered.x}px,${filtered.y}px)`; requestAnimationFrame(animate); };
     resize(); requestAnimationFrame(animate);
   })();
   </script>
